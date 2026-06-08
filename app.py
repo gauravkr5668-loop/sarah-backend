@@ -7,6 +7,8 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
 app = Flask(__name__)
 
 CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
@@ -14,7 +16,16 @@ CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 CALENDAR_ID = "getveronica.ai@gmail.com"
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 REDIRECT_URI = "https://sarah-backend-eipx.onrender.com/oauth/callback"
-TOKEN_FILE = "google_token.json"
+
+CLIENT_CONFIG = {
+    "web": {
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "redirect_uris": [REDIRECT_URI]
+    }
+}
 
 def get_calendar_service():
     token_json = os.environ.get("GOOGLE_TOKEN", "")
@@ -42,52 +53,33 @@ def health():
 @app.route("/oauth/start")
 def oauth_start():
     flow = Flow.from_client_config(
-        {
-            "web": {
-                "client_id": CLIENT_ID,
-                "client_secret": CLIENT_SECRET,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [REDIRECT_URI]
-            }
-        },
+        CLIENT_CONFIG,
         scopes=SCOPES,
         redirect_uri=REDIRECT_URI
     )
+    flow.code_verifier = None
     auth_url, _ = flow.authorization_url(
         access_type="offline",
-        include_granted_scopes="true",
         prompt="consent"
     )
     return redirect(auth_url)
 
 @app.route("/oauth/callback")
 def oauth_callback():
-    flow = Flow.from_client_config(
-        {
-            "web": {
-                "client_id": CLIENT_ID,
-                "client_secret": CLIENT_SECRET,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [REDIRECT_URI]
-            }
-        },
-        scopes=SCOPES,
-        redirect_uri=REDIRECT_URI
+    code = request.args.get("code")
+    token_response = requests.post(
+        "https://oauth2.googleapis.com/token",
+        data={
+            "code": code,
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
+            "redirect_uri": REDIRECT_URI,
+            "grant_type": "authorization_code"
+        }
     )
-    flow.fetch_token(code=request.args.get("code"))
-    creds = flow.credentials
-    token_data = {
-        "token": creds.token,
-        "refresh_token": creds.refresh_token,
-        "token_uri": creds.token_uri,
-        "client_id": creds.client_id,
-        "client_secret": creds.client_secret,
-        "scopes": list(creds.scopes)
-    }
+    token_data = token_response.json()
     return jsonify({
-        "message": "Auth successful! Copy this token and add it to Render as GOOGLE_TOKEN",
+        "message": "Auth successful! Copy the token below and add to Render as GOOGLE_TOKEN",
         "token": json.dumps(token_data)
     })
 
