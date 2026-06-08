@@ -6,8 +6,8 @@ from flask import Flask, request, jsonify
 app = Flask(__name__)
 
 CAL_API_KEY = os.environ.get("CAL_API_KEY", "")
-CAL_EVENT_TYPE_ID = os.environ.get("CAL_EVENT_TYPE_ID", "")
-CAL_BASE_URL = "https://api.cal.com/v1"
+CAL_EVENT_TYPE_ID = os.environ.get("CAL_EVENT_TYPE_ID", "5926447")
+CAL_BASE_URL = "https://api.cal.com/v2"
 
 @app.route("/")
 def home():
@@ -39,29 +39,35 @@ def vapi_tool():
             date_str = dt.strftime("%Y-%m-%d")
 
             resp = requests.get(
-                f"{CAL_BASE_URL}/slots",
+                f"{CAL_BASE_URL}/slots/available",
                 params={
-                    "apiKey": CAL_API_KEY,
                     "eventTypeId": CAL_EVENT_TYPE_ID,
-                    "startTime": f"{date_str}T00:00:00+10:00",
-                    "endTime": f"{date_str}T23:59:00+10:00",
+                    "startTime": f"{date_str}T00:00:00.000Z",
+                    "endTime": f"{date_str}T23:59:00.000Z",
                     "timeZone": "Australia/Sydney"
+                },
+                headers={
+                    "Authorization": f"Bearer {CAL_API_KEY}",
+                    "cal-api-version": "2024-09-04"
                 },
                 timeout=8
             )
             slots_data = resp.json()
             all_slots = []
-            for day_slots in slots_data.get("slots", {}).values():
+            for day_slots in slots_data.get("data", {}).get("slots", {}).values():
                 for slot in day_slots:
-                    all_slots.append(slot.get("time", ""))
+                    all_slots.append(slot.get("start", ""))
 
-            requested_time = dt.strftime("%H:%M")
-            available = any(requested_time in s for s in all_slots)
+            requested_hour = dt.strftime("%H:%M")
+            available = any(requested_hour in s for s in all_slots)
 
-            if available:
-                return jsonify({"result": "available", "slots": all_slots[:5]}), 200
+            if all_slots:
+                if available:
+                    return jsonify({"result": "available", "slots": all_slots[:5]}), 200
+                else:
+                    return jsonify({"result": "unavailable", "available_slots": all_slots[:5]}), 200
             else:
-                return jsonify({"result": "unavailable", "slots": all_slots[:5]}), 200
+                return jsonify({"result": "unavailable", "slots": []}), 200
 
         except Exception as e:
             return jsonify({"result": f"error: {str(e)}"}), 200
@@ -74,27 +80,30 @@ def vapi_tool():
             payload = {
                 "eventTypeId": int(CAL_EVENT_TYPE_ID),
                 "start": dt.isoformat(),
-                "responses": {
+                "attendee": {
                     "name": args.get("name", "Customer"),
                     "email": args.get("email", "noreply@smithsplumbing.com.au"),
-                    "phone": args.get("phone", ""),
-                    "notes": args.get("description", "")
+                    "timeZone": "Australia/Sydney",
+                    "phoneNumber": args.get("phone", "")
                 },
-                "timeZone": "Australia/Sydney",
-                "language": "en",
-                "metadata": {}
+                "metadata": {
+                    "notes": args.get("description", "")
+                }
             }
 
             resp = requests.post(
                 f"{CAL_BASE_URL}/bookings",
-                params={"apiKey": CAL_API_KEY},
                 json=payload,
+                headers={
+                    "Authorization": f"Bearer {CAL_API_KEY}",
+                    "cal-api-version": "2024-08-13"
+                },
                 timeout=8
             )
             result = resp.json()
 
             if resp.status_code in [200, 201]:
-                return jsonify({"result": "booked", "bookingId": result.get("id")}), 200
+                return jsonify({"result": "booked", "bookingId": result.get("data", {}).get("id")}), 200
             else:
                 return jsonify({"result": f"booking failed: {result}"}), 200
 
