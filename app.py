@@ -96,7 +96,20 @@ def vapi_tool():
     args = tool.get("function", {}).get("arguments", {})
 
     if fn_name == "capture_lead":
-        return jsonify({"result": "Lead captured successfully"}), 200
+        try:
+            SHEETS_WEBHOOK = "https://script.google.com/macros/s/AKfycbzVFTvnoWqtMp94ji-_VfReSeS5SQ5rgBA2EN7oTpy4FLzYWbEpsudEeAIkfftSdPXM/exec"
+            payload = {
+                "name":      args.get("name", "Unknown"),
+                "number":    args.get("phone", args.get("number", "Unknown")),
+                "suburb":    args.get("suburb", args.get("location", "Unknown")),
+                "problem":   args.get("problem", args.get("issue", args.get("jobDetails", "Unknown"))),
+                "priority":  args.get("priority", "normal"),
+                "timestamp": datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+            }
+            requests.post(SHEETS_WEBHOOK, json=payload, timeout=10)
+            return jsonify({"result": "Lead captured successfully"}), 200
+        except Exception as e:
+            return jsonify({"result": f"Lead capture error: {str(e)}"}), 200
 
     elif fn_name == "checkAvailability":
         try:
