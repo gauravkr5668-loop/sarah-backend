@@ -94,6 +94,11 @@ def vapi_tool():
     tool = tool_calls[0]
     fn_name = tool.get("function", {}).get("name", "")
     args = tool.get("function", {}).get("arguments", {})
+    if isinstance(args, str):
+        try:
+            args = json.loads(args)
+        except:
+            args = {}
 
     if fn_name == "capture_lead":
         try:
