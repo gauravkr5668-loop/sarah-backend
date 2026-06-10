@@ -102,7 +102,7 @@ def vapi_tool():
 
     if fn_name == "capture_lead":
         try:
-            SHEETS_WEBHOOK = "https://script.google.com/macros/s/AKfycbxUKtiI0h4mpaX871_WgfeuDS3UbPIglzQmwcjmIqiQHtFBLSFR6-bBPo2nos7QS0lovg/exec"
+            SHEETS_WEBHOOK = "https://script.google.com/macros/s/AKfycby6KWwBUEXhzZ1ug49WqP7xi0RBjG8DfBjRmPV51Q0Flz3ni37_laSxq0F6rS-LccvF1w/exec"
             payload = {
                 "name":      args.get("name", "Unknown"),
                 "phone":    args.get("phone", args.get("number", "Unknown")),
