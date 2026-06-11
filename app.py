@@ -103,18 +103,22 @@ def vapi_tool():
         or []
     )
 
-    if not tool_calls:
-        print("=== NO TOOL CALLS FOUND - FULL MESSAGE KEYS ===", list(msg.keys()), flush=True, file=sys.stderr)
+    if tool_calls:
+        tool = tool_calls[0]
+        fn_name = tool.get("function", {}).get("name", "")
+        args = tool.get("function", {}).get("arguments", {})
+        if isinstance(args, str):
+            try:
+                args = json.loads(args)
+            except:
+                args = {}
+    elif data.get("name") and isinstance(data.get("phone"), (str, type(None))) and "suburb" in data:
+        # Flat payload: Vapi sent args directly as the request body
+        fn_name = "capture_lead"
+        args = data
+    else:
+        print("=== NO TOOL CALLS FOUND - FULL DATA KEYS ===", list(data.keys()), flush=True, file=sys.stderr)
         return jsonify({"result": "no tool calls found"}), 200
-
-    tool = tool_calls[0]
-    fn_name = tool.get("function", {}).get("name", "")
-    args = tool.get("function", {}).get("arguments", {})
-    if isinstance(args, str):
-        try:
-            args = json.loads(args)
-        except:
-            args = {}
 
     if fn_name == "capture_lead":
         try:
