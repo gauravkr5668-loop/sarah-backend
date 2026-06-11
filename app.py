@@ -88,14 +88,6 @@ def oauth_callback():
 def vapi_webhook():
     return jsonify({"status": "ok"}), 200
 
-
-@app.route("/vapi-webhook", methods=["POST"])
-def vapi_webhook():
-    import json
-    data = request.get_json(silent=True, force=True) or {}
-    print("VAPI WEBHOOK:", json.dumps(data, indent=2))
-    return jsonify({"status": "ok"}), 200
-
 @app.route("/vapi-tool", methods=["POST"])
 def vapi_tool():
     data = request.get_json(silent=True) or {}
