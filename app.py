@@ -102,17 +102,48 @@ def vapi_tool():
 
     if fn_name == "capture_lead":
         try:
-            SHEETS_WEBHOOK = "https://script.google.com/macros/s/AKfycbzSeI-f4XLEQ2Y2uVZwPJiVNhMuLWPju6TbOfPC7lLi4k0VWcG4SywYna2ZMY58i9UX0w/exec"
+            NOTION_API_KEY = os.environ.get("NOTION_API_KEY", "")
+            NOTION_DATABASE_ID = os.environ.get("NOTION_DATABASE_ID", "")
             payload = {
-                "name":      args.get("name", "Unknown"),
-                "phone":    args.get("phone", args.get("number", "Unknown")),
-                "suburb":    args.get("suburb", args.get("location", "Unknown")),
-                "problem":   args.get("problem", args.get("issue", args.get("jobDetails", "Unknown"))),
-                "urgency":   args.get("urgency", args.get("priority", "normal")),
-                "timestamp": datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+                "parent": {"database_id": NOTION_DATABASE_ID},
+                "properties": {
+                    "Caller name": {
+                        "title": [{"text": {"content": args.get("name", "Unknown")}}]
+                    },
+                    "Phone number": {
+                        "phone_number": args.get("phone", args.get("number", ""))
+                    },
+                    "Suburb": {
+                        "rich_text": [{"text": {"content": args.get("suburb", args.get("location", ""))}}]
+                    },
+                    "Job type": {
+                        "select": {"name": args.get("problem", args.get("issue", "General"))}
+                    },
+                    "Notes": {
+                        "rich_text": [{"text": {"content": args.get("urgency", "normal")}}]
+                    },
+                    "Call time": {
+                        "date": {"start": datetime.datetime.now().isoformat()}
+                    },
+                    "Status": {
+                        "select": {"name": "New lead"}
+                    }
+                }
             }
-            requests.post(SHEETS_WEBHOOK, json=payload, timeout=10)
-            return jsonify({"result": "Lead captured successfully"}), 200
+            response = requests.post(
+                "https://api.notion.com/v1/pages",
+                headers={
+                    "Authorization": f"Bearer {NOTION_API_KEY}",
+                    "Notion-Version": "2022-06-28",
+                    "Content-Type": "application/json"
+                },
+                json=payload,
+                timeout=10
+            )
+            if response.status_code == 200:
+                return jsonify({"result": "Lead captured successfully"}), 200
+            else:
+                return jsonify({"result": f"Notion error: {response.text}"}), 200
         except Exception as e:
             return jsonify({"result": f"Lead capture error: {str(e)}"}), 200
 
