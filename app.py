@@ -94,9 +94,17 @@ def vapi_tool():
     import sys
     print("=== LIVE VAPI PAYLOAD ===", flush=True, file=sys.stderr)
     print(data, flush=True, file=sys.stderr)
-    tool_calls = data.get("message", {}).get("toolCalls", [])
+
+    msg = data.get("message", {})
+    tool_calls = (
+        msg.get("toolCalls")
+        or msg.get("toolCallList")
+        or [tc.get("toolCall", tc) for tc in msg.get("toolWithToolCallList", [])]
+        or []
+    )
 
     if not tool_calls:
+        print("=== NO TOOL CALLS FOUND - FULL MESSAGE KEYS ===", list(msg.keys()), flush=True, file=sys.stderr)
         return jsonify({"result": "no tool calls found"}), 200
 
     tool = tool_calls[0]
