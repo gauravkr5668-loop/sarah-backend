@@ -91,6 +91,9 @@ def vapi_webhook():
 @app.route("/vapi-tool", methods=["POST"])
 def vapi_tool():
     data = request.get_json(silent=True) or {}
+    import sys
+    print("=== LIVE VAPI PAYLOAD ===", flush=True, file=sys.stderr)
+    print(data, flush=True, file=sys.stderr)
     tool_calls = data.get("message", {}).get("toolCalls", [])
 
     if not tool_calls:
